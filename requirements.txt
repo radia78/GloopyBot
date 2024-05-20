@@ -1,3 +1,4 @@
-chromadb
-langchain
+chromadb==0.3.29
+langchain==0.1.20
 tiktoken
+unstructured[md]
