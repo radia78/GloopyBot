@@ -7,6 +7,7 @@ from langchain_community.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 CHROMA_PATH = "chroma"
+BASE_URL = "http://192.168.1.103:11434"
 EMB_MODEL_NAME = "snowflake-arctic-embed:22m"
 CHAT_MODEL_NAME = "phi3:mini"
 PROMPT_TEMPLATE = """
@@ -23,7 +24,7 @@ def main() -> None:
     # Prepare the DB
     db = Chroma(
         collection_name = "LOCAL_DOCUMENT_VECTOR_DATABASE", # Database Name
-        embedding_function = OllamaEmbeddings(model=EMB_MODEL_NAME), # Embedding Model
+        embedding_function = OllamaEmbeddings(base_url = BASE_URL, model=EMB_MODEL_NAME), # Embedding Model
         collection_metadata = {"hnsw:space": "cosine"} # Distance Metric: Cosine Distance
     )
 
@@ -36,7 +37,7 @@ def main() -> None:
     )
 
     # Prepare the model
-    model = ChatOllama(model = CHAT_MODEL_NAME)
+    model = ChatOllama(base_url = BASE_URL, model = CHAT_MODEL_NAME)
 
     # Ready the prompt template
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
@@ -76,7 +77,7 @@ def main() -> None:
 
         # List the sources and append it to response
         print("Formating response.")
-        formatted_response = f"Response: {response_text}\nSources: {sources}"
+        formatted_response = f"Response: {response_text.content}\nSources: {sources}"
         print(formatted_response)
 
 if __name__ == "__main__":
