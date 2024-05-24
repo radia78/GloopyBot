@@ -35,6 +35,12 @@ def main() -> None:
         type=int,
         default=8000
     )
+    parser.add_argument(
+        "-e", 
+        "--emb_url", 
+        help="The url for the Ollama server",
+        type=str
+    )
     args = parser.parse_args()
 
     # Prepare text splitter
@@ -57,7 +63,8 @@ def main() -> None:
     db = Chroma(
         client = client,
         collection_name = args.collection_name,
-        embedding_function = OllamaEmbeddings(base_url=EMB_MODEL_URL, model=EMB_MODEL_NAME)
+        embedding_function = OllamaEmbeddings(base_url=args.emb_url, model=EMB_MODEL_NAME),
+        collection_metadata = {"hnsw:space": "cosine"} # Distance Metric: Cosine Distance
     )
 
     # Load the document and upload it to the vector database

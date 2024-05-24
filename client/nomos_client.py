@@ -1,12 +1,12 @@
 from dataclasses import dataclass
+import chromadb
+from chromadb.config import Settings
+from argparse import ArgumentParser
 from langchain_community.chat_models.ollama import ChatOllama
 from langchain_community.embeddings.ollama import OllamaEmbeddings
 from langchain_community.vectorstores.chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.document_loaders import DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-CHROMA_PATH = "chroma"
 EMB_MODEL_NAME = "snowflake-arctic-embed:22m"
 CHAT_MODEL_NAME = "phi3:mini"
 PROMPT_TEMPLATE = """
@@ -20,23 +20,56 @@ Answer the question based only on the above context: {question}
 """
 
 def main() -> None:
+    # Parse the command line arguments
+    parser = ArgumentParser(description="Perform inference on legal documents")
+    parser.add_argument(
+        "-c", 
+        "--collection_name", 
+        help="Name of the collection. Make sure it's all lowercase and connected by underline.",
+        type=str
+    )
+    parser.add_argument(
+        "-i", 
+        "--host_name", 
+        help="Name of the host machine for the vector database.",
+        type=str
+    )
+    parser.add_argument(
+        "-p", 
+        "--port_number", 
+        help="The exposed port for the vector database",
+        type=int,
+        default=8000
+    )
+    parser.add_argument(
+        "-e", 
+        "--emb_url", 
+        help="The url for the Ollama server",
+        type=str
+    )
+    args = parser.parse_args()
+
+    # Start the Chroma client
+    client = chromadb.HttpClient(
+        host=args.host_name, 
+        port=args.port_number,
+        settings=Settings(allow_reset=True)
+    )
+    client.get_or_create_collection(args.collection_name)
+
     # Prepare the DB
     db = Chroma(
-        collection_name = "LOCAL_DOCUMENT_VECTOR_DATABASE", # Database Name
-        embedding_function = OllamaEmbeddings(base_url = BASE_URL, model=EMB_MODEL_NAME), # Embedding Model
+        client = client,
+        collection_name = args.collection_name,
+        embedding_function = OllamaEmbeddings(base_url=args.emb_url, model=EMB_MODEL_NAME),
         collection_metadata = {"hnsw:space": "cosine"} # Distance Metric: Cosine Distance
     )
 
-    # Prepare text splitter
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 1000,
-        chunk_overlap = 500,
-        length_function = len,
-        add_start_index = True
-    )
-
     # Prepare the model
-    model = ChatOllama(base_url = BASE_URL, model = CHAT_MODEL_NAME)
+    model = ChatOllama(
+        base_url=args.emb_url, 
+        model = CHAT_MODEL_NAME
+    )
 
     # Ready the prompt template
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
@@ -46,25 +79,11 @@ def main() -> None:
         # Input for query and document(s) directory
         context_text = ""
         query_text = input("Chat prompt: ")
-        doc_dir = input("Please input additional document(s) directory, otherwise enter 'none': ")
 
-        # Case if no directory is given
-        if doc_dir == "none":
-            prompt = prompt_template.format(context=context_text, question=query_text)
-            sources = "N/A"
-
-        # Case if a directory is given
-        else:
-            # Load the document and upload it to the vector database
-            loader = DirectoryLoader(doc_dir, glob="*.md")
-            chunks = text_splitter.split_documents(loader.load())
-            print("Adding document(s) to the vector database.")
-            db.add_documents(chunks)
-
-            # Find the relevant results from the query
-            results = db.similarity_search_with_relevance_scores(query_text, k=3)
-            context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
-            sources = [doc.metadata.get("source", None) for doc, _score in results]
+        # Find the relevant results from the query
+        results = db.similarity_search_with_relevance_scores(query_text, k=3)
+        context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+        sources = [doc.metadata.get("source", None) for doc, _score in results]
 
         # Format the query to include contexts
         print("Formatting prompt.")
@@ -75,9 +94,9 @@ def main() -> None:
         response_text = model.invoke(prompt)
 
         # List the sources and append it to response
-        print("Formating response.")
+        print("Formating response.\n")
         formatted_response = f"Response: {response_text.content}\nSources: {sources}"
-        print(formatted_response)
+        print(formatted_response.join("\n"))
 
 if __name__ == "__main__":
     main()
