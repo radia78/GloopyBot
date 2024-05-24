@@ -7,7 +7,6 @@ from langchain_community.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 CHROMA_PATH = "chroma"
-BASE_URL = "http://192.168.1.103:11434"
 EMB_MODEL_NAME = "snowflake-arctic-embed:22m"
 CHAT_MODEL_NAME = "phi3:mini"
 PROMPT_TEMPLATE = """
