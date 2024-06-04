@@ -1,4 +1,6 @@
 chromadb
 langchain==0.1.20
 tiktoken
+fastapi
+huggingface-hub
 unstructured[md]
