@@ -1,1 +1,1 @@
-# Nomos Demo
+# Gloopy Bot
