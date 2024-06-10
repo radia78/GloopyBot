@@ -2,19 +2,16 @@ from pydantic import BaseModel
 from langchain.prompts import ChatPromptTemplate
 
 PROMPT_TEMPLATE = """
-    Answer the question based only on the following context:
-    
-    {context}
-    
+    You are an AI assistant. Answer the question based on your own knowledge.
     ---
-    
-    Answer the question based only on the above context: {question}
+    question: {question}
     
     """
 
 # Data structure for chat prompts
 class ChatPrompt(BaseModel):
     id: int
+    paper_id: str
     question: str
 
 # Initialize the prompt template
